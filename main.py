@@ -1,9 +1,9 @@
-from turtle import width
-
+import os
 import streamlit as st
 from services.auth.login_wall import render_login_wall
 from services.state.session_defaults import initial_session_defaults
 from services.config.workout_config import EXERCISE_OPTIONS
+from services.ui.style_loader import load_css, inject_local_font
 
 
 def main():
@@ -13,6 +13,9 @@ def main():
         page_icon="🏋️‍♂️",
         layout="centered",
         initial_sidebar_state="expanded")
+    load_css(os.path.join(os.getcwd(), "static", "style.css"))
+    inject_local_font(os.path.join(os.getcwd(), "static",
+                      "AdobeClean.otf"), "AdobeClean")
 
     if not render_login_wall():
         return  # Stop rendering the rest of the app if not logged in
@@ -116,6 +119,7 @@ def main():
                           f"{st.session_state.front_knee_angle}°")
                 st.metric("Torso Angle", f"{st.session_state.torso_angle}°")
                 st.metric("Balance Status", st.session_state.balance_status)
+
 
     # st.write("Welcome to the AI GYM Coach! You are now logged in.")
     # Here you can add the rest of your app's functionality

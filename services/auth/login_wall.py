@@ -6,7 +6,8 @@ def render_login_wall():
     if st.session_state.get("user_id") is not None:
         return True  # User is already logged in
 
-    st.title("Welcome to AI GYM Coach!")
+    st.title("🏋️‍♂️ AI Real-time GYM Trainer")
+    st.markdown("### Welcome! Please enter a username to start.")
 
     with st.form("login_form", clear_on_submit=False):
         st.write("Please log in to access the AI GYM Coach features.")
