@@ -70,7 +70,6 @@ coverage.xml
 
 # Common data and model folders
 ml_models/
-static/
 data/
 
 # Model files
