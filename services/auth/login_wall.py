@@ -1,4 +1,5 @@
 import streamlit as st
+from services.persistence.exercise_repo import get_or_create_user
 
 
 def render_login_wall():
@@ -23,8 +24,13 @@ def render_login_wall():
                 st.error("Please enter your name.")
                 return False
 
-            st.session_state["username"] = username  # Set a dummy user ID
-            st.session_state["user_id"] = "1"  # Set a dummy user ID
+            # Get or create user in the database
+            user = get_or_create_user(username)
+
+            # Set the username from the database
+            st.session_state["username"] = user["username"]
+            # Set the user ID from the database
+            st.session_state["user_id"] = user["id"]
             st.success("Logged in successfully!")
 
             st.rerun()  # Rerun to update the UI after form submission

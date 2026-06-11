@@ -1,8 +1,8 @@
 import sqlite3
 import streamlit as st
-from pathlib import path
+from pathlib import Path
 
-_DB_PATH = str(path(__file__).parent.parent.parent / "data.db")
+_DB_PATH = str(Path(__file__).parent.parent.parent / "data.db")
 
 
 @st.cache_resource
