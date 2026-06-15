@@ -1,7 +1,6 @@
 from core.base_exercise import BaseExercise
 
 
-# BaseExercise.__init__(self) parent class constructor is called to initialize reps and stage variables
 class SquatDetector(BaseExercise):
     DOWN_THRESHOLD = 100
     UP_THRESHOLD = 160
@@ -17,13 +16,13 @@ class SquatDetector(BaseExercise):
     RIGHT_SHOULDER = 12
 
     def __init__(self):
-        super().__init__()
+        super().__init__()  # BaseExercise.__init__(self) parent class constructor is called to initialize reps and stage variables
 
-    def reset(self):  # used when the user wants to reset the count of reps and stage
+    def reset(self) -> None:  # used when the user wants to reset the count of reps and stage
         self.reps = 0
         self.stage = None
 
-    def process_frame(self, landmarks):
+    def process_frame(self, landmarks) -> dict:
 
         left_knee_angle = self.calculate_angle(
             self.get_point(landmarks, self.LEFT_HIP),
