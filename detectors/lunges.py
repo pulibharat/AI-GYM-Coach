@@ -23,7 +23,7 @@ class LungesDetector(BaseExercise):
         self.reps = 0
         self.stage = None
 
-    def process(self, landmarks) -> dict:
+    def process_frame(self, landmarks) -> dict:
 
         left_knee_angle = self.calculate_angle(
             self.get_point(landmarks, self.LEFT_HIP),
