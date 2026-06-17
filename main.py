@@ -1,8 +1,10 @@
 import os
+import time
 import streamlit as st
 from services.auth.login_wall import render_login_wall
 from services.state.session_defaults import initial_session_defaults
 from services.config.workout_config import EXERCISE_OPTIONS
+from services.tracking.metrics import sync_metrics_update
 from services.ui.style_loader import load_css, inject_local_font, inject_webrtc_styles
 from services.persistence.exercise_repo import init_db
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
@@ -41,22 +43,39 @@ def main():
         st.subheader("Workout Plan")
 
         if not workout_started:
-            st.selectbox("Exercise", options=EXERCISE_OPTIONS,
-                         key="plan_exercise")
 
-            st.number_input("Sets", min_value=1, max_value=50,
-                            value=3, step=1, key="plan_sets")
+            plan_exercise = st.selectbox(
+                "Exercise", options=EXERCISE_OPTIONS, key="plan_exercise_input")
 
-            st.number_input("Reps per Set", min_value=1,
-                            max_value=100, value=10, step=1, key="plan_reps")
+            plan_sets = st.number_input(
+                "Sets", min_value=1, max_value=50, value=3, step=1, key="plan_sets_input")
+
+            plan_reps = st.number_input(
+                "Reps per Set", min_value=1, max_value=100, value=10, step=1, key="plan_reps_input")
 
             st.markdown("")
 
-            start_session_button = st.button("Start Workout", width="stretch",
-                                             key="start_workout_button")
+            start_session_button = st.button(
+                "Start Workout", width="stretch", key="start_workout_button")
 
             if start_session_button:
-                st.session_state["workout_started"] = True
+                st.session_state.exercise_type = plan_exercise
+                st.session_state.target_sets = int(plan_sets)
+                st.session_state.reps_per_set = int(plan_reps)
+                st.session_state.plan_exercise = plan_exercise
+                st.session_state.plan_sets = int(plan_sets)
+                st.session_state.plan_reps = int(plan_reps)
+
+                st.session_state.reps = 0
+                st.session_state.sets_completed = 0
+                st.session_state.current_set_reps = 0
+                st.session_state.workout_complete = False
+                st.session_state.workout_started = True
+                st.session_state.set_cycle_started_at = time.time()
+
+                st.session_state.last_saved_sets_completed = 0
+                st.session_state.last_notified_sets_completed = 0
+                st.session_state.last_notified_workout_complete = False
                 st.rerun()
 
         else:
@@ -69,21 +88,22 @@ def main():
             end_session_btn = st.button(
                 "End Workout", key="end_session_button", width="stretch")
             if end_session_btn:
-                st.session_state["workout_started"] = False
+                st.session_state.workout_started = False
+                # st.session_state["workout_started"] = False
                 st.session_state["workout_complete"] = True
                 st.success("Workout session ended. Great job!")
                 st.rerun()
         if workout_started:
             st.divider()
 
-            exercise = st.session_state.get("plan_exercise")
+            exercise = st.session_state.get("exercise_type", "N/A")
 
             total_reps = st.session_state.get("reps")
             current_set_reps = st.session_state.get("current_set_reps")
-            reps_per_set = st.session_state.get("plan_reps")
+            reps_per_set = st.session_state.get("reps_per_set")
             sets_completed = st.session_state.get("sets_completed")
 
-            target_sets = st.session_state.get("plan_sets")
+            target_sets = st.session_state.get("target_sets")
 
             st.subheader("Session Status")
 
@@ -168,9 +188,15 @@ def main():
             async_processing=True
         )
 
-        st.markdown("### Workout History")
+        sync_metrics_update(context)
+
+        if context.state.playing:
+            time.sleep(0.25)
+            st.rerun()
 
         inject_webrtc_styles()
+
+        st.markdown("### Workout History")
 
 
 if __name__ == "__main__":
