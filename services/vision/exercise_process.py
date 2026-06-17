@@ -291,11 +291,6 @@ class VideoProcessorClass(VideoProcessorBase):
             os.getcwd(), "ml_models", "pose_landmarker_full.task")
         base_option = python.BaseOptions(model_asset_path=model_path)
 
-        # project_root = os.path.abspath(
-        #     os.path.join(os.path.dirname(__file__), "..", ".."))
-        # model_path = os.path.join(
-        #     project_root, "ml_models", "pose_landmarker_full.task")
-
         options = vision.PoseLandmarkerOptions(
             base_options=base_option,
             running_mode=vision.RunningMode.VIDEO,
@@ -467,7 +462,7 @@ class VideoProcessorClass(VideoProcessorBase):
 
         mp_image = mp.Image(
             image_format=mp.ImageFormat.SRGB,
-            data=cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            data=cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         )
 
         self._frame_timestamps_ms += 30
@@ -484,7 +479,7 @@ class VideoProcessorClass(VideoProcessorBase):
             detector = self._detectors.get(ex_type)
 
             if detector:
-                metrics = detector.process_frame(landmarks)
+                metrics = detector.process(landmarks)
 
                 metrics["pose_detected"] = True
 

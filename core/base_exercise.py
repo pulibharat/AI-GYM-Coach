@@ -5,9 +5,8 @@ import math
 class BaseExercise(ABC):
 
     def __init__(self):
-
         self.reps = 0
-        self.stages = None
+        self.stage = None
 
     def calculate_angle(self, a, b, c):
         ax, ay = a[0] - b[0], a[1] - b[1]
@@ -23,13 +22,16 @@ class BaseExercise(ABC):
         cos_angle = max(-1.0, min(1.0,  dot / (mag_a * mag_c)))
         return math.degrees(math.acos(cos_angle))
 
-    def get_points(self, landmarks, idx):
+    def get_point(self, landmarks, idx):
         p = landmarks[idx]
         return (p.x, p.y)
 
     @abstractmethod
-    def process_frame(self, landmarks):
+    def process(self, landmarks):
         pass
+
+    # def process_frame(self, landmarks):
+    #     return self.process(landmarks)
 
     @abstractmethod
     def reset(self):
