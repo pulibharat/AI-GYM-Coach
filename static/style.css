@@ -179,3 +179,14 @@ div[role="menuitem"] {
   background-color: #181D2A !important;
   color: #fff;
 }
+
+/* Hide Streamlit audio player from the DOM visually but keep playing */
+audio, [data-testid="stAudio"] {
+  display: none !important;
+  height: 0px !important;
+  width: 0px !important;
+  margin: 0px !important;
+  padding: 0px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

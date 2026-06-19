@@ -2,6 +2,7 @@ import os
 import time
 import streamlit as st
 import pandas as pd
+from dotenv import load_dotenv
 from services.auth.login_wall import render_login_wall
 from services.state.session_defaults import initial_session_defaults
 from services.config.workout_config import EXERCISE_OPTIONS
@@ -11,6 +12,14 @@ from services.persistence.exercise_repo import init_db
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
 from services.vision.exercise_process import VideoProcessorClass
 from services.persistence.exercise_repo import get_users_exercises
+from groq import Groq
+from services.coaching.llm import LLMCoach
+from services.coaching.tts import TextToSpeech
+from services.coaching.voice_pipeline import VoicePipeline, autoplay_audio
+
+# Load environment variables
+load_dotenv()
+
 
 
 def main():
@@ -20,6 +29,7 @@ def main():
         page_icon="🏋️‍♂️",
         layout="centered",
         initial_sidebar_state="expanded")
+
     load_css(os.path.join(os.getcwd(), "static", "style.css"))
     inject_local_font(os.path.join(os.getcwd(), "static",
                       "AdobeClean.otf"), "AdobeClean")
@@ -31,6 +41,20 @@ def main():
 
     initial_session_defaults()  # Set up session state defaults
 
+    if "voice_pipeline" not in st.session_state:
+        try:
+            api_key = os.environ.get("GROQ_API_KEY", "")
+
+            if not api_key and hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets:
+                api_key = st.secrets["GROQ_API_KEY"]
+
+            groq_client = Groq(api_key=api_key)
+            llm_coach = LLMCoach(groq_client)
+            tts = TextToSpeech()
+            st.session_state.voice_pipeline = VoicePipeline(llm_coach, tts)
+        except Exception as e:
+            st.session_state.voice_pipeline = None
+
     workout_started = st.session_state.get("workout_started", False)
 
     with st.sidebar:
@@ -38,7 +62,7 @@ def main():
         # st.markdown("Your personal workout assistant powered by AI.")
 
         if st.session_state.username:
-            st.caption("Logged in as: " + st.session_state.username)
+            st.caption(f"👤 Login as {st.session_state.username}")
 
         st.divider()
 
@@ -60,22 +84,45 @@ def main():
             start_session_button = st.button(
                 "Start Workout", width="stretch", key="start_workout_button")
 
+            # if start_session_button:
+            #     st.session_state.exercise_type = plan_exercise
+            #     st.session_state.target_sets = int(plan_sets)
+            #     st.session_state.reps_per_set = int(plan_reps)
+            #     st.session_state.plan_exercise = plan_exercise
+            #     st.session_state.plan_sets = int(plan_sets)
+            #     st.session_state.plan_reps = int(plan_reps)
+
+            #     st.session_state.reps = 0
+            #     st.session_state.sets_completed = 0
+            #     st.session_state.current_set_reps = 0
+            #     st.session_state.workout_complete = False
+            #     st.session_state.workout_started = True
+            #     st.session_state.set_cycle_started_at = time.time()
+
+            #     st.session_state.last_saved_sets_completed = 0
+            #     st.session_state.last_notified_sets_completed = 0
+            #     st.session_state.last_notified_workout_complete = False
+            #     st.rerun()
             if start_session_button:
                 st.session_state.exercise_type = plan_exercise
                 st.session_state.target_sets = int(plan_sets)
                 st.session_state.reps_per_set = int(plan_reps)
-                st.session_state.plan_exercise = plan_exercise
-                st.session_state.plan_sets = int(plan_sets)
-                st.session_state.plan_reps = int(plan_reps)
-
                 st.session_state.reps = 0
-                st.session_state.sets_completed = 0
-                st.session_state.current_set_reps = 0
-                st.session_state.workout_complete = False
                 st.session_state.workout_started = True
                 st.session_state.set_cycle_started_at = time.time()
-
                 st.session_state.last_saved_sets_completed = 0
+
+                if st.session_state.voice_pipeline:
+                    result = st.session_state.voice_pipeline.process_event(
+                        event="workout_started",
+                        exercise=plan_exercise,
+                        metrics={}
+                    )
+
+                    if result:
+                        st.session_state.audio_to_play, st.session_state.coach_feedback = result
+                        autoplay_audio(st.session_state.audio_to_play)
+
                 st.session_state.last_notified_sets_completed = 0
                 st.session_state.last_notified_workout_complete = False
                 st.rerun()
@@ -85,16 +132,26 @@ def main():
             sets = st.session_state.get("plan_sets", 0)
             reps = st.session_state.get("plan_reps", 0)
 
-            st.info(f"**{exercise}** - {sets} sets of {reps} reps")
+            st.info(f"**{exercise}** -- {sets} Sets of {reps} Reps")
 
             end_session_btn = st.button(
                 "End Workout", key="end_session_button", width="stretch")
+
             if end_session_btn:
                 st.session_state.workout_started = False
                 # st.session_state["workout_started"] = False
-                st.session_state["workout_complete"] = True
-                st.success("Workout session ended. Great job!")
+                # st.session_state["workout_complete"] = True
+                # st.success("Workout session ended. Great job!")
+                if st.session_state.voice_pipeline:
+                    result = st.session_state.voice_pipeline.process_event(
+                        event="workout_completed",
+                        exercise=exercise,
+                        metrics={}
+                    )
+                    if result:
+                        st.session_state.audio_to_play, st.session_state.coach_feedback = result
                 st.rerun()
+
         if workout_started:
             st.divider()
 
@@ -148,11 +205,35 @@ def main():
                 st.metric("Torso Angle", f"{st.session_state.torso_angle}°")
                 st.metric("Balance Status", st.session_state.balance_status)
 
+    workout_started = st.session_state.get("workout_started", False)
+
     # st.write("Welcome to the AI GYM Coach! You are now logged in.")
     # Here you can add the rest of your app's functionality
 
     st.title("AI Real-time GYM Coach")
     st.markdown("### Real-time pose detection with proactive AI voice coaching")
+
+    # Process newly queued audio
+    if st.session_state.get("audio_to_play"):
+        autoplay_audio(st.session_state.audio_to_play)
+
+    # Persistently render the audio element while it is active to prevent cutoff
+    if st.session_state.get("currently_playing_audio"):
+        if time.time() < st.session_state.get("skip_fast_rerun_until", 0):
+            st.audio(
+                st.session_state.currently_playing_audio,
+                format="audio/mp3",
+                autoplay=True
+            )
+        else:
+            # Clean up after playback duration ends
+            st.session_state.currently_playing_audio = None
+            st.session_state.audio_key = None
+
+
+    if st.session_state.get("coach_feedback"):
+        st.markdown("")
+        st.success(f"🤖 **Coach:** {st.session_state.coach_feedback}")
 
     if not workout_started:
         st.markdown(
@@ -197,6 +278,18 @@ def main():
             st.rerun()
 
         inject_webrtc_styles()
+
+        # if st.session_state.get("audio_to_play"):
+        #     autoplay_audio(st.session_state.audio_to_play)
+
+        # if context.state.playing:
+        #     if time.time() < st.session_state.get("skip_fast_rerun_until", 0):
+        #         time.sleep(0.5)
+        #     else:
+        #         time.sleep(0.25)
+        #     st.rerun()
+
+        # inject_webrtc_styles()
 
         st.divider()
 
