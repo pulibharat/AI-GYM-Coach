@@ -69,7 +69,7 @@ coverage.xml
 .env
 
 # Common data and model folders
-ml_models/
+# ml_models/
 data/
 
 # Model files
